@@ -68,7 +68,11 @@ def setup_handlers(ai_client: PolzaAiClient) -> Router:
             await message.answer("Пока я умею отвечать только на текстовые вопросы.")
             return
 
-        async with ChatActionSender(action=ChatAction.TYPING, chat_id=message.chat.id):
+        async with ChatActionSender(
+            action=ChatAction.TYPING,
+            bot=message.bot,
+            chat_id=message.chat.id,
+        ):
             try:
                 answer = await ask_ai(message.text)
             except AiServiceError:
