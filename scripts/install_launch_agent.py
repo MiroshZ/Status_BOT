@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import plistlib
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -10,13 +11,16 @@ LABEL = "local.status-bot"
 def main() -> None:
     project_dir = Path(__file__).resolve().parents[1]
     home = Path.home()
+    runtime_dir = home / ".status-bot-runtime"
     launch_agents_dir = home / "Library" / "LaunchAgents"
     launch_agents_dir.mkdir(parents=True, exist_ok=True)
     logs_dir = home / "Library" / "Logs" / "StatusBot"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     plist_path = launch_agents_dir / f"{LABEL}.plist"
-    runner = project_dir / "scripts" / "run_bot_launchd.sh"
+    _sync_runtime(project_dir, runtime_dir)
+
+    runner = runtime_dir / "scripts" / "run_bot_launchd.sh"
     log_path = logs_dir / "bot.log"
     error_log_path = logs_dir / "bot.err.log"
 
@@ -43,6 +47,25 @@ def main() -> None:
     print(f"Installed and started {LABEL}")
     print(f"Plist: {plist_path}")
     print(f"Logs: {log_path}")
+    print(f"Runtime: {runtime_dir}")
+
+
+def _sync_runtime(project_dir: Path, runtime_dir: Path) -> None:
+    if runtime_dir.exists():
+        shutil.rmtree(runtime_dir)
+
+    ignore = shutil.ignore_patterns(
+        ".git",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "__pycache__",
+        "*.pyc",
+        "bot.log",
+        "bot.err.log",
+        "bot.pid",
+    )
+    shutil.copytree(project_dir, runtime_dir, ignore=ignore)
 
 
 def _uid() -> int:
