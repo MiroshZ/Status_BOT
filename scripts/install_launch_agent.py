@@ -14,11 +14,12 @@ def main() -> None:
     launch_agents_dir.mkdir(parents=True, exist_ok=True)
 
     plist_path = launch_agents_dir / f"{LABEL}.plist"
-    python_executable = project_dir / ".venv" / "bin" / "python"
+    python_executable = (project_dir / ".venv" / "bin" / "python").resolve()
     log_path = project_dir / "bot.log"
 
     plist = {
         "Label": LABEL,
+        "Program": str(python_executable),
         "ProgramArguments": [str(python_executable), "-m", "status_bot.main"],
         "WorkingDirectory": str(project_dir),
         "RunAtLoad": True,
