@@ -58,6 +58,23 @@ TELEGRAM_BOT_TOKEN=1234567890:telegram_token_here
 python -m compileall src
 ```
 
+## Фоновый запуск на macOS
+
+Чтобы бот продолжал работать после закрытия терминала и автоматически
+перезапускался, установите LaunchAgent:
+
+```bash
+python scripts/install_launch_agent.py
+```
+
+Остановить и удалить фоновый запуск:
+
+```bash
+python scripts/uninstall_launch_agent.py
+```
+
+Логи пишутся в `bot.log`.
+
 ## Источники справочного контекста
 
 - официальный сайт АО «СТАТУС»: https://rostatus.ru/
