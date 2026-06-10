@@ -12,17 +12,18 @@ def main() -> None:
     home = Path.home()
     launch_agents_dir = home / "Library" / "LaunchAgents"
     launch_agents_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir = home / "Library" / "Logs" / "StatusBot"
+    logs_dir.mkdir(parents=True, exist_ok=True)
 
     plist_path = launch_agents_dir / f"{LABEL}.plist"
     runner = project_dir / "scripts" / "run_bot_launchd.sh"
-    log_path = project_dir / "bot.log"
-    error_log_path = project_dir / "bot.err.log"
+    log_path = logs_dir / "bot.log"
+    error_log_path = logs_dir / "bot.err.log"
 
     plist = {
         "Label": LABEL,
         "Program": "/bin/sh",
         "ProgramArguments": ["/bin/sh", str(runner)],
-        "WorkingDirectory": str(project_dir),
         "RunAtLoad": True,
         "KeepAlive": True,
         "StandardOutPath": str(log_path),

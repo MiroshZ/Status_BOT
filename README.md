@@ -73,7 +73,7 @@ python scripts/install_launch_agent.py
 python scripts/uninstall_launch_agent.py
 ```
 
-Логи пишутся в `bot.log`.
+Логи фонового запуска пишутся в `~/Library/Logs/StatusBot/`.
 
 ## Источники справочного контекста
 
