@@ -9,4 +9,5 @@ dist/
 build/
 *.egg-info/
 bot.log
+bot.err.log
 bot.pid

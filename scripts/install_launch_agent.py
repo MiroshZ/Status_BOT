@@ -14,18 +14,19 @@ def main() -> None:
     launch_agents_dir.mkdir(parents=True, exist_ok=True)
 
     plist_path = launch_agents_dir / f"{LABEL}.plist"
-    python_executable = (project_dir / ".venv" / "bin" / "python").resolve()
+    runner = project_dir / "scripts" / "run_bot_launchd.sh"
     log_path = project_dir / "bot.log"
+    error_log_path = project_dir / "bot.err.log"
 
     plist = {
         "Label": LABEL,
-        "Program": str(python_executable),
-        "ProgramArguments": [str(python_executable), "-m", "status_bot.main"],
+        "Program": "/bin/sh",
+        "ProgramArguments": ["/bin/sh", str(runner)],
         "WorkingDirectory": str(project_dir),
         "RunAtLoad": True,
         "KeepAlive": True,
         "StandardOutPath": str(log_path),
-        "StandardErrorPath": str(log_path),
+        "StandardErrorPath": str(error_log_path),
         "EnvironmentVariables": {
             "PYTHONUNBUFFERED": "1",
         },
