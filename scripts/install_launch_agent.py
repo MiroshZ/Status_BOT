@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import plistlib
+import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -18,11 +20,10 @@ def main() -> None:
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     plist_path = launch_agents_dir / f"{LABEL}.plist"
-    _sync_runtime(project_dir, runtime_dir)
-
-    runner = runtime_dir / "scripts" / "run_bot_launchd.sh"
     log_path = logs_dir / "bot.log"
-    error_log_path = logs_dir / "bot.err.log"
+    staging_root, staged_runtime = _prepare_runtime(project_dir, home)
+    backup_dir = home / f".status-bot-runtime.backup-{os.getpid()}"
+    runner = runtime_dir / "scripts" / "run_bot_launchd.sh"
 
     plist = {
         "Label": LABEL,
@@ -30,19 +31,54 @@ def main() -> None:
         "ProgramArguments": ["/bin/sh", str(runner)],
         "RunAtLoad": True,
         "KeepAlive": True,
-        "StandardOutPath": str(log_path),
-        "StandardErrorPath": str(error_log_path),
+        "StandardOutPath": "/dev/null",
+        "StandardErrorPath": "/dev/null",
         "EnvironmentVariables": {
             "PYTHONUNBUFFERED": "1",
+            "STATUS_BOT_LOG_FILE": str(log_path),
         },
     }
 
-    with plist_path.open("wb") as file:
-        plistlib.dump(plist, file)
+    try:
+        with plist_path.open("wb") as file:
+            plistlib.dump(plist, file)
 
-    subprocess.run(["launchctl", "bootout", f"gui/{_uid()}", str(plist_path)], check=False)
-    subprocess.run(["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)], check=True)
-    subprocess.run(["launchctl", "kickstart", "-k", f"gui/{_uid()}/{LABEL}"], check=True)
+        subprocess.run(
+            ["launchctl", "bootout", f"gui/{_uid()}", str(plist_path)],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if runtime_dir.exists():
+            os.replace(runtime_dir, backup_dir)
+        try:
+            os.replace(staged_runtime, runtime_dir)
+            subprocess.run(["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)], check=True)
+            subprocess.run(["launchctl", "kickstart", "-k", f"gui/{_uid()}/{LABEL}"], check=True)
+        except Exception:
+            subprocess.run(
+                ["launchctl", "bootout", f"gui/{_uid()}", str(plist_path)],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if runtime_dir.exists():
+                shutil.rmtree(runtime_dir)
+            if backup_dir.exists():
+                os.replace(backup_dir, runtime_dir)
+                subprocess.run(
+                    ["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)],
+                    check=False,
+                )
+                subprocess.run(
+                    ["launchctl", "kickstart", "-k", f"gui/{_uid()}/{LABEL}"],
+                    check=False,
+                )
+            raise
+        if backup_dir.exists():
+            shutil.rmtree(backup_dir)
+    finally:
+        shutil.rmtree(staging_root, ignore_errors=True)
 
     print(f"Installed and started {LABEL}")
     print(f"Plist: {plist_path}")
@@ -50,10 +86,9 @@ def main() -> None:
     print(f"Runtime: {runtime_dir}")
 
 
-def _sync_runtime(project_dir: Path, runtime_dir: Path) -> None:
-    if runtime_dir.exists():
-        shutil.rmtree(runtime_dir)
-
+def _prepare_runtime(project_dir: Path, home: Path) -> tuple[Path, Path]:
+    staging_root = Path(tempfile.mkdtemp(prefix=".status-bot-staging-", dir=home))
+    staged_runtime = staging_root / "runtime"
     ignore = shutil.ignore_patterns(
         ".git",
         ".pytest_cache",
@@ -65,7 +100,15 @@ def _sync_runtime(project_dir: Path, runtime_dir: Path) -> None:
         "bot.err.log",
         "bot.pid",
     )
-    shutil.copytree(project_dir, runtime_dir, ignore=ignore)
+    try:
+        shutil.copytree(project_dir, staged_runtime, ignore=ignore)
+        env_file = staged_runtime / ".env"
+        if env_file.exists():
+            env_file.chmod(0o600)
+    except Exception:
+        shutil.rmtree(staging_root, ignore_errors=True)
+        raise
+    return staging_root, staged_runtime
 
 
 def _uid() -> int:

@@ -73,9 +73,11 @@ python scripts/install_launch_agent.py
 python scripts/uninstall_launch_agent.py
 ```
 
-Логи фонового запуска пишутся в `~/Library/Logs/StatusBot/`.
+Логи фонового запуска пишутся в `~/Library/Logs/StatusBot/bot.log`; файл
+ограничен по размеру и хранит несколько архивных копий.
 Runtime-копия для LaunchAgent создается в `~/.status-bot-runtime`, чтобы macOS
-не блокировала запуск из защищенной папки `Documents`.
+не блокировала запуск из защищенной папки `Documents`. Повторная установка
+сначала готовит новую runtime-копию, затем переключает службу на неё.
 
 ## Источники справочного контекста
 
