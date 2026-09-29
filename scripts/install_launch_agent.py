@@ -4,6 +4,7 @@ import plistlib
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -48,22 +49,19 @@ def main() -> None:
             os.replace(runtime_dir, backup_dir)
         try:
             os.replace(staged_runtime, runtime_dir)
-            subprocess.run(["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)], check=True)
-            subprocess.run(["launchctl", "kickstart", "-k", f"gui/{_uid()}/{LABEL}"], check=True)
+            _bootstrap(plist_path)
+            service = f"gui/{_uid()}/{LABEL}"
+            subprocess.run(["launchctl", "kickstart", "-k", service], check=True)
+            _wait_until_running(service)
         except Exception:
             _bootout_if_loaded()
             if runtime_dir.exists():
                 shutil.rmtree(runtime_dir)
             if backup_dir.exists():
                 os.replace(backup_dir, runtime_dir)
-                subprocess.run(
-                    ["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)],
-                    check=False,
-                )
-                subprocess.run(
-                    ["launchctl", "kickstart", "-k", f"gui/{_uid()}/{LABEL}"],
-                    check=False,
-                )
+                _bootstrap(plist_path, check=False)
+                service = f"gui/{_uid()}/{LABEL}"
+                subprocess.run(["launchctl", "kickstart", "-k", service], check=False)
             raise
         if backup_dir.exists():
             shutil.rmtree(backup_dir)
@@ -115,6 +113,32 @@ def _bootout_if_loaded() -> None:
     )
     if result.returncode == 0:
         subprocess.run(["launchctl", "bootout", service], check=True)
+
+
+def _bootstrap(plist_path: Path, *, check: bool = True) -> None:
+    command = ["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)]
+    for attempt in range(4):
+        result = subprocess.run(command, check=False)
+        if result.returncode == 0:
+            return
+        if attempt < 3:
+            time.sleep(1)
+    if check:
+        raise subprocess.CalledProcessError(result.returncode, command)
+
+
+def _wait_until_running(service: str) -> None:
+    for _ in range(10):
+        result = subprocess.run(
+            ["launchctl", "print", service],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and "state = running" in result.stdout:
+            return
+        time.sleep(1)
+    raise RuntimeError(f"LaunchAgent {LABEL} did not reach the running state")
 
 
 if __name__ == "__main__":
