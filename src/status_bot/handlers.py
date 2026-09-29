@@ -1,5 +1,5 @@
-from collections.abc import Awaitable, Callable
 import logging
+from collections.abc import Awaitable, Callable
 
 from aiogram import Router
 from aiogram.enums import ChatAction

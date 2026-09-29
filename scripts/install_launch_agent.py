@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import plistlib
 import os
+import plistlib
 import shutil
 import subprocess
 import tempfile
@@ -43,12 +43,7 @@ def main() -> None:
         with plist_path.open("wb") as file:
             plistlib.dump(plist, file)
 
-        subprocess.run(
-            ["launchctl", "bootout", f"gui/{_uid()}", str(plist_path)],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        _bootout_if_loaded()
         if runtime_dir.exists():
             os.replace(runtime_dir, backup_dir)
         try:
@@ -56,12 +51,7 @@ def main() -> None:
             subprocess.run(["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)], check=True)
             subprocess.run(["launchctl", "kickstart", "-k", f"gui/{_uid()}/{LABEL}"], check=True)
         except Exception:
-            subprocess.run(
-                ["launchctl", "bootout", f"gui/{_uid()}", str(plist_path)],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            _bootout_if_loaded()
             if runtime_dir.exists():
                 shutil.rmtree(runtime_dir)
             if backup_dir.exists():
@@ -113,6 +103,18 @@ def _prepare_runtime(project_dir: Path, home: Path) -> tuple[Path, Path]:
 
 def _uid() -> int:
     return int(subprocess.check_output(["id", "-u"], text=True).strip())
+
+
+def _bootout_if_loaded() -> None:
+    service = f"gui/{_uid()}/{LABEL}"
+    result = subprocess.run(
+        ["launchctl", "print", service],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode == 0:
+        subprocess.run(["launchctl", "bootout", service], check=True)
 
 
 if __name__ == "__main__":

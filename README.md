@@ -26,6 +26,7 @@ pip install -e .
 
 ```bash
 cp .env.example .env
+chmod 600 .env
 ```
 
 4. Запустите бота:
