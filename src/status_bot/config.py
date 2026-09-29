@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     polza_base_url: str = Field(default="https://polza.ai/api/v1", alias="POLZA_BASE_URL")
     polza_model: str = Field(default="openai/gpt-4o", alias="POLZA_MODEL")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_file: str | None = Field(default=None, alias="STATUS_BOT_LOG_FILE")
 
 
 @lru_cache
