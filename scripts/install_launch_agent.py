@@ -118,13 +118,18 @@ def _bootout_if_loaded() -> None:
 def _bootstrap(plist_path: Path, *, check: bool = True) -> None:
     command = ["launchctl", "bootstrap", f"gui/{_uid()}", str(plist_path)]
     for attempt in range(4):
-        result = subprocess.run(command, check=False)
+        result = subprocess.run(command, check=False, capture_output=True, text=True)
         if result.returncode == 0:
             return
         if attempt < 3:
             time.sleep(1)
     if check:
-        raise subprocess.CalledProcessError(result.returncode, command)
+        raise subprocess.CalledProcessError(
+            result.returncode,
+            command,
+            output=result.stdout,
+            stderr=result.stderr,
+        )
 
 
 def _wait_until_running(service: str) -> None:
